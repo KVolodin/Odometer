@@ -15,9 +15,29 @@ import android.os.IBinder
 import androidx.core.app.ActivityCompat
 
 
+enum class CurrentState(val state : Int) {
+    STATE_STOP(0),
+    STATE_START(1),
+    STATE_RESTART(2);
+
+    fun isDuring(): Boolean {
+        return this == STATE_START
+    }
+    fun isRestart():Boolean {
+        return this == STATE_RESTART
+    }
+}
+
+
 class OdometerService : Service() {
+    companion object {
+        const val PERMISSION_STRING = Manifest.permission.ACCESS_FINE_LOCATION
+    }
+
     private lateinit var listener: LocationListener
     private lateinit var  locManager : LocationManager
+
+    var currentState : CurrentState = CurrentState.STATE_STOP
 
     private var distanceInMeters : Double = 0.0
     private var lastLocation : Location? = null
@@ -42,10 +62,16 @@ class OdometerService : Service() {
 
         listener = object : LocationListener {
             override fun onLocationChanged(location: Location?) {
+
+                if(currentState.isRestart()) {
+                    distanceInMeters = 0.0
+                    currentState = CurrentState.STATE_START
+                }
+
                 if ( lastLocation == null ) {
                     lastLocation = location
                 }
-                if( location != null ){
+                if( currentState.isDuring() && location != null ){
                     distanceInMeters += location?.distanceTo(lastLocation)
                 }
                 lastLocation = location;
